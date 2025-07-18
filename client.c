@@ -17,7 +17,7 @@ int main(){
         struct sockaddr_in adr = {0}; 
         adr.sin_family = AF_INET; 	
         adr.sin_port = htons(6868); 
-        Inet_pton(AF_INET, "84.22.151.55", &adr.sin_addr); 
+        Inet_pton(AF_INET, "127.0.1.1", &adr.sin_addr); 
 		Connect(fd, (struct sockaddr*)&adr, sizeof adr); 
 		char buf[BUF_SIZE] = {0};
 

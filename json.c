@@ -160,6 +160,7 @@ void parse_user_input(const char *input, int sockfd) {
         }
         
         cJSON_AddStringToObject(payload, "nick", nick);
+        
         char password_h[65];
         hash_pass(pass, password_h);
         printf("Hashed password: %s\n", password_h);
@@ -179,7 +180,11 @@ void parse_user_input(const char *input, int sockfd) {
         }
         
         cJSON_AddStringToObject(payload, "nick", nick);
-        cJSON_AddStringToObject(payload, "password", pass);
+        
+        char password_h[65];
+        hash_pass(pass, password_h);
+        printf("Hashed password: %s\n", password_h);
+        cJSON_AddStringToObject(payload, "password", password_h);
         
         send_json(sockfd, "login", payload);
     }

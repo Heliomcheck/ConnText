@@ -4,7 +4,7 @@
 #include <sqlite3.h>
 
 #define MAX_LEN_USER 32 
-#define MAX_LEN_PASS 64
+#define MAX_LEN_PASS 65
 #define MAX_USERS 1024
 
 typedef struct 
