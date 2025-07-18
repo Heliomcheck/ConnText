@@ -83,7 +83,14 @@ int main(int argc, char *argv[])
                 del_client(i, clients);
             } else {
                 buf[n] = '\0';
-                handle_client_json(client, buf, db);
+                int resp = handle_client_json(client, buf, db);
+                if (resp) {
+                    printf("Client disconnected (fd=%d)\n", client);
+                    reset_fd(client);
+                    close(client);
+                    FD_CLR(client, &allset);
+                    del_client(i, clients);
+                }
             }
         }
     }

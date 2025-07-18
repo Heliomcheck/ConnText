@@ -42,6 +42,6 @@ int exit_app(int sockfd);
 
 void reset_fd(int client_fd);
 
-void handle_client_json(int client_fd, const char *buf, sqlite3 *db);
+int handle_client_json(int client_fd, const char *buf, sqlite3 *db);
 
 #endif 

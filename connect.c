@@ -41,10 +41,11 @@ user_table_t user_table = {.count = 0};
 
 int find_user_by_nick(const char *nick)
 {
-    for (int i = 0; i < user_table.count; i++)
+    for (int i = 1; i <= user_table.count; i++)
     {
-        if (strcmp(user_table.users[i].nickname, nick) == 0)
+        if (strcmp(user_table.users[i].nickname, nick) == 0) {
             return i;
+        }
     }
     return -1;
 }
@@ -114,13 +115,14 @@ int logout_user(int sockfd) {
     int idx = find_user_by_socket(sockfd);
     if (idx == -1) { return -1; }
     user_table.users[idx].online = false;
-    close(sockfd);
+    printf("Client logged out: ID: %d\n", idx);
     return 0;
 }
 
 int exit_app(int sockfd) {
     logout_user(sockfd);
     close(sockfd);
+    printf("Client exit\n");
     return 0;
 }
 
@@ -128,14 +130,15 @@ void reset_fd(int client_fd) {
     int idx = find_user_by_socket(client_fd);
     if (idx == -1) { return; }
     user_table.users[idx].socket_fd = -1;
+    user_table.users[idx].online = false;
 }
 
-void handle_client_json(int client_fd, const char *buf, sqlite3 *db) {
+int handle_client_json(int client_fd, const char *buf, sqlite3 *db) {
     cJSON *root = cJSON_Parse(buf);
     if (!root) {
         send_json(client_fd, "error", cJSON_CreateString("Invalid JSON"));
         printf("Error parsing json\n");
-        return;
+        return 0;
     }
 
     cJSON *type = cJSON_GetObjectItem(root, "type");
@@ -144,7 +147,7 @@ void handle_client_json(int client_fd, const char *buf, sqlite3 *db) {
     if (!cJSON_IsString(type) || !cJSON_IsObject(payload)) {
         send_json(client_fd, "error", cJSON_CreateString("Missing type or payload"));
         cJSON_Delete(root);
-        return;
+        return 0;
     }
 
     if (strcmp(type->valuestring, "reg") == 0) {
@@ -201,11 +204,14 @@ void handle_client_json(int client_fd, const char *buf, sqlite3 *db) {
         int ans = logout_user(client_fd);
         if (ans == -1) {
             send_json(client_fd, "error", cJSON_CreateString("Something went wrong"));
+        } else {
+            return 1;
         }
     }
 
     else if (strcmp(type->valuestring, "exit") == 0) {
         exit_app(client_fd);
+        return 1;
     }
 
     else if (strcmp(type->valuestring, "status") == 0) {
@@ -217,19 +223,19 @@ void handle_client_json(int client_fd, const char *buf, sqlite3 *db) {
             cJSON_AddStringToObject(status, "nickname", user_table.users[idx].nickname);
             cJSON_AddBoolToObject(status, "online", user_table.users[idx].online);
             send_json(client_fd, "self status", status);
-            return;
+            return 0;
         }
 
         int idx = find_user_by_nick(nickname);
         if (idx == -1) {
             send_json(client_fd, "error", cJSON_CreateString("Nickname is incorrect"));
-            return;
+            return 0;
         } else {
             cJSON *status = cJSON_CreateObject();
             cJSON_AddStringToObject(status, "nickname", user_table.users[idx].nickname);
             cJSON_AddBoolToObject(status, "online", user_table.users[idx].online);
             send_json(client_fd, "status", status);
-            return;
+            return 0;
         } // добавить проверку, если клиент пишет свой ник
         
     }
@@ -239,5 +245,6 @@ void handle_client_json(int client_fd, const char *buf, sqlite3 *db) {
     }
 
     cJSON_Delete(root);
+    return 0;
 }
 
