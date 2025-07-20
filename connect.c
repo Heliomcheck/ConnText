@@ -115,7 +115,8 @@ int logout_user(int sockfd) {
     int idx = find_user_by_socket(sockfd);
     if (idx == -1) { return -1; }
     user_table.users[idx].online = false;
-    printf("Client logged out: ID: %d, FD: %d\n", idx, sockfd);
+    int id = user_table.users[idx].id;
+    printf("Client logged out: ID: %d, FD: %d\n", id, sockfd);
     return 0;
 }
 

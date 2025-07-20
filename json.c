@@ -69,15 +69,15 @@ void handle_server_response(const char *buf)
 
     else if (strcmp(type->valuestring, "status") == 0) {
         const char *nickname = cJSON_GetObjectItem(payload, "nickname")->valuestring;
-        const char *online = cJSON_GetObjectItem(payload, "online")->valuestring;
+         bool online = cJSON_IsTrue(cJSON_GetObjectItem(payload, "online"));
 
-        printf("[status]: Nickname: %s, Online: %s\n", nickname, online ? "No" : "Yes");
+        printf("[status]: Nickname: %s, Online: %s\n", nickname, online ? "Yes" : "No");
     }
 
     else if (strcmp(type->valuestring, "self status") == 0) {
         int id = cJSON_GetObjectItem(payload, "id")->valueint;
         const char *nickname = cJSON_GetObjectItem(payload, "nickname")->valuestring;
-        const char *online = cJSON_GetObjectItem(payload, "online")->valuestring;
+        bool online = cJSON_IsTrue(cJSON_GetObjectItem(payload, "online"));
 
         printf("[status]: ID: %d, Nickname: %s, Online: %s\n", id, nickname, online ? "No": "Yes");
     }
