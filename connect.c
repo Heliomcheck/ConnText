@@ -190,6 +190,11 @@ int handle_client_json(int client_fd, const char *buf, sqlite3 *db) {
             }
         }
 
+        if (strcmp(sender, "Unknown") == 0) {
+            send_json(client_fd, "error", cJSON_CreateString("You must be loginded"));
+            return 0;
+        }
+
         for (int i = 0; i < user_table.count; i++) {
             if (user_table.users[i].online && user_table.users[i].socket_fd != client_fd) {
                 cJSON *msg = cJSON_CreateObject();
