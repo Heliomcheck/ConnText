@@ -1,0 +1,8 @@
+*.swp
+*.swo
+*.tmp
+
+client
+server
+
+*.db
