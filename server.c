@@ -96,12 +96,4 @@ int main(int argc, char *argv[])
     }
 }
 
-/*static int add_client(int fd, int *a)
-{
-		for (int i = 0; i < MAXCL; i++)
-		{
-				if (a[i] < 0) {a[i] = fd; return 1; }
-		}
-		return 0;
-}*/
 static void del_client(int i, int *a) { a[i] = -1; }

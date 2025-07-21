@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <sys/socket.h>
 #include <stddef.h>
+#include <stdbool.h>
 #include "encryption.h"
 #include "json.h"
 
@@ -24,7 +25,7 @@ void send_json(int sockfd, const char *type, cJSON *payload)
 
     send(sockfd, json_with_newline, json_len + 1, 0);
     
-    printf("json text %s\n", out);
+    //printf("json text %s\n", out);
 
     free(out);
     free(json_with_newline);
@@ -82,48 +83,6 @@ void handle_server_response(const char *buf)
         printf("[status]: ID: %d, Nickname: %s, Online: %s\n", id, nickname, online ? "No": "Yes");
     }
 
-    /*cJSON *root = cJSON_Parse(buf);
-    if (!root) {
-        printf("[SERVER RAW]: %s\n", buf);
-        return;
-    }
-    cJSON *type = cJSON_GetObjectItem(root, "type");
-    if (!cJSON_IsString(type)) {
-        printf("[SERVER]: Неизвестный формат\n");
-        cJSON_Delete(root);
-        return;
-    }
-
-    if (strcmp(type->valuestring, "chat") != 0) {
-        printf("non chat\n");
-    }
-
-    if (strcmp(type->valuestring, "error") == 0) {
-        const cJSON *eerror = cJSON_GetObjectItem(root, "payload");
-        printf("[%s]: %s\n", type->valuestring, eerror->valuestring);
-    } 
-
-    if (strcmp(type->valuestring, "status") == 0) {
-        const cJSON *status = cJSON_GetObjectItem(root, "payload");
-        printf("[%s]: %s\n", type->valuestring, status->valuestring);
-    }
- 
-    if (strcmp(type->valuestring, "chat") == 0) {
-        const cJSON *from = cJSON_GetObjectItem(root, "from");
-        const cJSON *text = cJSON_GetObjectItem(root, "text");
-        if (cJSON_IsString(from) && cJSON_IsString(text)) {
-            printf("[%s]: %s\n", from->valuestring, text->valuestring);
-        }
-    } else if (strcmp(type->valuestring, "status") == 0 || strcmp(type->valuestring, "error") == 0) {
-        const cJSON *msg = cJSON_GetObjectItem(root, "message");
-        if (cJSON_IsString(msg)) {
-            printf("[%s]: %s\n", type->valuestring, msg->valuestring);
-        }
-    } else {
-        printf("[SERVER]: Неизвестный тип '%s'\n", type->valuestring);
-    }
-
-    cJSON_Delete(root);*/
 }
 
 void print_menu() {
@@ -163,7 +122,6 @@ void parse_user_input(const char *input, int sockfd) {
         
         char password_h[65];
         hash_pass(pass, password_h);
-        printf("Hashed password: %s\n", password_h);
         cJSON_AddStringToObject(payload, "password", password_h);
 
         send_json(sockfd, "reg", payload);
@@ -183,7 +141,6 @@ void parse_user_input(const char *input, int sockfd) {
         
         char password_h[65];
         hash_pass(pass, password_h);
-        printf("Hashed password: %s\n", password_h);
         cJSON_AddStringToObject(payload, "password", password_h);
         
         send_json(sockfd, "login", payload);
