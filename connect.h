@@ -13,6 +13,7 @@ typedef struct
     char nickname[MAX_LEN_USER];
     char password[MAX_LEN_PASS];
     int socket_fd;
+    int room_id;
     bool online;
 } user_t;
 

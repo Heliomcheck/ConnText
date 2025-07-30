@@ -10,6 +10,7 @@
 #include "connect.h"
 #include "json.h"
 #include "sqlite.h"
+#include "room.h"
 
 
 int start_server(char *val, int backlog)
@@ -194,6 +195,10 @@ int handle_client_json(int client_fd, const char *buf, sqlite3 *db) {
         if (strcmp(sender, "Unknown") == 0) {
             send_json(client_fd, "error", cJSON_CreateString("You must be loginded"));
             return 0;
+        }
+
+        if (strcmp(sender, "Unknown") != 0) {
+            message_to_room(client_fd, db, buf);
         }
 
         for (int i = 0; i < user_table.count; i++) {
