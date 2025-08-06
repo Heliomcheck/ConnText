@@ -25,7 +25,7 @@ void send_json(int sockfd, const char *type, cJSON *payload)
 
     send(sockfd, json_with_newline, json_len + 1, 0);
     
-    //printf("json text %s\n", out);
+    printf("json text %s\n", out);
 
     free(out);
     free(json_with_newline);
@@ -79,8 +79,32 @@ void handle_server_response(const char *buf)
         int id = cJSON_GetObjectItem(payload, "id")->valueint;
         const char *nickname = cJSON_GetObjectItem(payload, "nickname")->valuestring;
         bool online = cJSON_IsTrue(cJSON_GetObjectItem(payload, "online"));
+        int room_id = cJSON_GetObjectItem(payload, "room_id")->valueint;
 
-        printf("[status]: ID: %d, Nickname: %s, Online: %s\n", id, nickname, online ? "No": "Yes");
+        printf("[status]: ID: %d, Nickname: %s, Online: %s, Room: %d\n", id, nickname, online ? "No": "Yes", room_id);
+    }
+
+    else if (strcmp(type->valuestring, "list") == 0) {
+        cJSON *payload = cJSON_GetObjectItem(root, "payload");
+        const char *room_id = cJSON_GetObjectItem(payload, "room_id")->valuestring;
+        const char *room_name = cJSON_GetObjectItem(payload, "room_name")->valuestring;
+
+        printf("[%s]: %s\n", room_id, room_name);
+    }
+
+    else if (strcmp(type->valuestring, "info") == 0) {
+        printf("[info]: %s\n", payload->valuestring);
+    }
+
+    else if (strcmp(type->valuestring, "rooms") == 0) {
+        int room_id = cJSON_GetObjectItem(payload, "room_id")->valueint;
+        const char *room_name = cJSON_GetObjectItem(payload, "room_name")->valuestring;
+
+        printf("ID: %d, Name: %s\n", room_id, room_name);
+    }
+
+    else {
+        printf("[error]: incorrected command\n");
     }
 
 }
@@ -89,7 +113,11 @@ void print_menu() {
     printf("/help - all commands\n");
     printf("/reg <nick> <pass> - register new account\n");
     printf("/login <nick> <pass> - login to account\n");
-    printf("/msg <text> - send message to all users\n");
+    printf("/msg <text> - send message to users in chat\n");
+    printf("/list - print your chats\n");
+    printf("/cd <room_id> - login into room\n");
+    printf("/create <room_name> - creating room\n");
+    printf("/add <user_name> - add user into room\n");
     printf("/logout - exit from chat\n");
     printf("/exit - close application and logout\n");
     printf("/status <nick> - print status of user,\n"
@@ -125,6 +153,7 @@ void parse_user_input(const char *input, int sockfd) {
         cJSON_AddStringToObject(payload, "password", password_h);
 
         send_json(sockfd, "reg", payload);
+        return;
     }
 
     else if (strcmp(command, "/login") == 0) {
@@ -144,6 +173,7 @@ void parse_user_input(const char *input, int sockfd) {
         cJSON_AddStringToObject(payload, "password", password_h);
         
         send_json(sockfd, "login", payload);
+        return;
     }
 
     else if (strcmp(command, "/msg") == 0) {
@@ -157,16 +187,73 @@ void parse_user_input(const char *input, int sockfd) {
         
         cJSON_AddStringToObject(payload, "text", text);
         send_json(sockfd, "message", payload);
+        return;
+    }
+
+    else if (strcmp(command, "/list") == 0) {
+        cJSON_AddStringToObject(payload, "list", "1");
+        send_json(sockfd, "list", payload);
+        return;
+    }
+
+    else if (strcmp(command, "/cd") == 0) {
+        char *room_id_str = strtok(NULL, "");
+        if (!room_id_str) {
+            printf("Usage: /cd <room_id>\n");
+            cJSON_Delete(root);
+            cJSON_Delete(payload);
+            return;
+        }
+        char *endptr;
+        long room_id = strtol(room_id_str, &endptr, 10);
+    
+        if (*endptr != '\0' || room_id_str == endptr) {
+            printf("Error: room_id must be a number\n");
+            cJSON_Delete(root);
+            cJSON_Delete(payload);
+            return;
+        }
+
+        cJSON_AddNumberToObject(payload, "room_id", room_id);
+        send_json(sockfd, "cd", payload);
+        return;
+    }
+
+    else if (strcmp(command, "/create") == 0) {
+        char *room_name = strtok(NULL, "");
+        if (!room_name) {
+            printf("Usage: /create <room_name>\n");
+            cJSON_Delete(root);
+            cJSON_Delete(payload);
+            return;
+        }
+        cJSON_AddStringToObject(payload, "room_name", room_name);
+        send_json(sockfd, "create", payload);
+        return;
+    }
+
+    else if (strcmp(command, "/add") == 0) {
+        char *nickname = strtok(NULL, "");
+        if (!nickname) {
+            printf("Usage: /add <nickname>\n");
+            cJSON_Delete(root);
+            cJSON_Delete(payload);
+            return;
+        }
+        cJSON_AddStringToObject(payload, "nickname", nickname);
+        send_json(sockfd, "add", payload);
     }
 
     else if (strcmp(command, "/logout") == 0) {
         cJSON_AddStringToObject(payload, "logout", "1");
         send_json(sockfd, "logout", payload);
+        return;
     }
 
     else if (strcmp(command, "/exit") == 0) {
         cJSON_AddStringToObject(payload, "exit", "1");
         send_json(sockfd, "exit", payload);
+        return;
     }
 
     else if (strcmp(command, "/status") == 0) {
@@ -174,11 +261,13 @@ void parse_user_input(const char *input, int sockfd) {
         if (nick) {
             cJSON_AddStringToObject(payload, "nickname", nick);
             send_json(sockfd,"status", payload);
+            return;
         } else {
             cJSON_AddStringToObject(payload, "nickname", "self");
             send_json(sockfd, "status", payload);
+            return;
         }
-        
+        return;
     }
 
     else {

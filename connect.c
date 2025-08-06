@@ -61,6 +61,15 @@ int find_user_by_socket(int sockfd) {
     return -1;
 }
 
+int find_user_by_id(int id) {
+    for (int i = 0; i < user_table.count; i++) {
+        if (id == user_table.users[i].id) {
+            return i;
+        }
+    }
+    return -1;
+}
+
 int register_user(const char *nickname, const char *password, int socketfd, sqlite3 *db)
 {
     int err = add_user_in_db_table(db, nickname, password);
@@ -197,12 +206,15 @@ int handle_client_json(int client_fd, const char *buf, sqlite3 *db) {
             return 0;
         }
 
-        if (strcmp(sender, "Unknown") != 0) {
+        else if (strcmp(sender, "Unknown") != 0) {
+            create_message_table(db);
             message_to_room(client_fd, db, buf);
         }
 
+        int idx = find_user_by_socket(client_fd);
+
         for (int i = 0; i < user_table.count; i++) {
-            if (user_table.users[i].online && user_table.users[i].socket_fd != client_fd) {
+            if (user_table.users[i].online && user_table.users[i].room_id == user_table.users[idx].room_id) {
                 cJSON *msg = cJSON_CreateObject();
                 cJSON_AddStringToObject(msg, "from", sender);
                 cJSON_AddStringToObject(msg, "text", text);
@@ -221,10 +233,10 @@ int handle_client_json(int client_fd, const char *buf, sqlite3 *db) {
         }
     }
 
-    else if (strcmp(type->valuestring, "exit") == 0) {
+    /*else if (strcmp(type->valuestring, "exit") == 0) {
         exit_app(client_fd);
         return 1;
-    }
+    }*/
 
     else if (strcmp(type->valuestring, "status") == 0) {
         char *nickname = cJSON_GetObjectItem(payload, "nickname")->valuestring;
@@ -234,6 +246,7 @@ int handle_client_json(int client_fd, const char *buf, sqlite3 *db) {
             cJSON_AddNumberToObject(status, "id", user_table.users[idx].id);
             cJSON_AddStringToObject(status, "nickname", user_table.users[idx].nickname);
             cJSON_AddBoolToObject(status, "online", user_table.users[idx].online);
+            cJSON_AddNumberToObject(status, "room_id", user_table.users[idx].room_id);
             send_json(client_fd, "self status", status);
             return 0;
         }
@@ -250,6 +263,74 @@ int handle_client_json(int client_fd, const char *buf, sqlite3 *db) {
             return 0;
         } // добавить проверку, если клиент пишет свой ник
         
+    }
+
+    else if (strcmp(type->valuestring, "history") == 0) {
+       show_history(client_fd, db);
+       return 0;
+    }
+
+    else if (strcmp(type->valuestring, "list") == 0) {
+        list_user_rooms(client_fd, db);
+        return 0;
+    }
+
+    else if (strcmp(type->valuestring, "cd") == 0) {
+        int room_id = cJSON_GetObjectItem(payload, "room_id")->valueint;
+        int ans = enter_into_room(client_fd, db, room_id);
+        int idx = find_user_by_socket(client_fd);
+        
+        if (ans != 0) {
+            send_json(client_fd, "error", cJSON_CreateString("U can't enter this chat\n"));
+            return 0;
+        }
+        else {
+            user_table.users[idx].room_id = room_id;
+            printf("room_id: %d\n", room_id);
+            send_json(client_fd, "info", cJSON_CreateString("U enter this room\n"));
+            return 0;
+        }
+    }
+
+    else if (strcmp(type->valuestring, "exit") == 0) {
+        int idx = find_user_by_socket(client_fd);
+
+        user_table.users[idx].room_id = 0;
+        send_json(client_fd, "info", cJSON_CreateString("U exit this room\n"));
+        return 0;
+    }
+
+    else if (strcmp(type->valuestring, "add") == 0) {
+        const char *nickname = cJSON_GetObjectItem(payload, "nickname")->valuestring;
+        int idx = find_user_by_socket(client_fd);
+        int room_id = user_table.users[idx].room_id;
+
+        if (room_id < 1) {
+            send_json(client_fd, "error", cJSON_CreateString("U must enter the room\n"));
+            return 0;
+        }
+        
+        const char *room_name = find_room_name_by_id(db, room_id);
+        if (room_name == NULL) {
+            printf("room_name in NULL\n");
+        }
+        int rc = add_user_into_room(client_fd, db, nickname, room_id, room_name);
+        if (rc == 0) {
+            send_json(client_fd, "info", cJSON_CreateString("U add user into chat\n"));
+        }
+    }
+
+    else if (strcmp(type->valuestring, "create") == 0) {
+        const char *room_name = cJSON_GetObjectItem(payload, "room_name")->valuestring;
+        int rc = create_room(client_fd, db, room_name, true);
+        printf("rc = %d\n", rc);
+
+        if (rc != 0) {
+            send_json(client_fd, "error", cJSON_CreateString("Chat wasn't created\n"));
+        }
+        else if (rc == 0) {
+            send_json(client_fd, "error", cJSON_CreateString("Chat was created!!!\n"));
+        }
     }
 
     else {

@@ -31,6 +31,8 @@ int find_user_by_nick(const char *nick);
 
 int find_user_by_socket(int sockfd);
 
+int find_user_by_id(int id);
+
 int register_user(const char *nickname, const char *password, int socketfd, sqlite3 *db);
 
 int check_password(const char *nickname, const char *password, int socketfd);
