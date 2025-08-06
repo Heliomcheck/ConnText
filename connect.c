@@ -43,7 +43,7 @@ user_table_t user_table = {.count = 0};
 
 int find_user_by_nick(const char *nick)
 {
-    for (int i = 1; i <= user_table.count; i++)
+    for (int i = 0; i <= user_table.count; i++)
     {
         if (strcmp(user_table.users[i].nickname, nick) == 0) {
             return i;
@@ -304,13 +304,15 @@ int handle_client_json(int client_fd, const char *buf, sqlite3 *db) {
         const char *nickname = cJSON_GetObjectItem(payload, "nickname")->valuestring;
         int idx = find_user_by_socket(client_fd);
         int room_id = user_table.users[idx].room_id;
+        //printf("room_id: %s\n", room_id);
 
         if (room_id < 1) {
             send_json(client_fd, "error", cJSON_CreateString("U must enter the room\n"));
             return 0;
         }
         
-        const char *room_name = find_room_name_by_id(db, room_id);
+        char *room_name = find_room_name_by_id(db, room_id);
+        printf("room_name in connect: %s\n", room_name);
         if (room_name == NULL) {
             printf("room_name in NULL\n");
         }
@@ -321,7 +323,7 @@ int handle_client_json(int client_fd, const char *buf, sqlite3 *db) {
     }
 
     else if (strcmp(type->valuestring, "create") == 0) {
-        const char *room_name = cJSON_GetObjectItem(payload, "room_name")->valuestring;
+        char *room_name = cJSON_GetObjectItem(payload, "room_name")->valuestring;
         int rc = create_room(client_fd, db, room_name, true);
         printf("rc = %d\n", rc);
 

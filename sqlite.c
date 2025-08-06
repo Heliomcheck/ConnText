@@ -4,6 +4,7 @@
 #include "connect.h"
 #include <string.h>
 #include "sqlite.h"
+#include "room.h"
 
 #define MAX_USERS 1024
 
@@ -28,6 +29,9 @@ sqlite3 *start_db() {
         return NULL;
     }
     sqlite3_free(err_msg);
+    create_table_room(db);
+    create_message_table(db);
+    create_table_room_user(db);
     return db;
 }
 

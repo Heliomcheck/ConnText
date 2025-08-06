@@ -26,7 +26,7 @@ int create_table_room(sqlite3 *db);
 
 int create_message_table(sqlite3 *db);
 
-int create_room(int client_fd, sqlite3 *db, const char *room_name, bool open);
+int create_room(int client_fd, sqlite3 *db, char *room_name, bool open);
 
 int create_table_room_user(sqlite3 *db);
 
@@ -40,8 +40,8 @@ int list_user_rooms(int client_fd, sqlite3 *db);
 
 int enter_into_room(int client_fd, sqlite3 *db, int room_id);
 
-int add_user_into_room(int client_fd, sqlite3 *db, const char *nickname, int room_id, const char *room_name);
+int add_user_into_room(int client_fd, sqlite3 *db, const char *nickname, int room_id, char *room_name);
 
-const char *find_room_name_by_id(sqlite3 *db, int id);
+char *find_room_name_by_id(sqlite3 *db, int id);
 
 #endif

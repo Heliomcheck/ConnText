@@ -3,6 +3,7 @@
 #include <sqlite3.h>
 #include <stdbool.h>
 #include <cJSON.h>
+#include <string.h>
 #include "connect.h"
 #include "json.h"
 
@@ -47,10 +48,8 @@ int create_message_table(sqlite3 *db) {
     return 0;
 }
 
-int create_room(int client_fd, sqlite3 *db, const char *room_name, bool open) {
+int create_room(int client_fd, sqlite3 *db, char *room_name, bool open) {
     (void)open;
-    create_table_room(db);
-    create_table_room_user(db);
     int idx = find_user_by_socket(client_fd);
     int id = user_table.users[idx].id;
     printf("user id: %d\n, room_name: %s\n", id, room_name);
@@ -133,7 +132,6 @@ int create_table_room_user(sqlite3 *db) {
 
 int message_to_room(int client_fd, sqlite3 *db, const char *text) {
     int idx = find_user_by_socket(client_fd);
-    create_message_table(db);
     int id = user_table.users[idx].id;
     int room_id = user_table.users[idx].room_id;
 
@@ -217,23 +215,25 @@ int list_user_rooms(int client_fd, sqlite3 *db) {
     sqlite3_bind_int(stmt, 1, id);
 
     int rc = sqlite3_step(stmt);
+    if (rc == SQLITE_ROW) {
+        while (rc == SQLITE_ROW) {
+            int room_id = sqlite3_column_int(stmt, 0);
+            const char *room_name = (const char *)sqlite3_column_text(stmt, 1);
 
-    while (rc == SQLITE_ROW) {
-        int room_id = sqlite3_column_int(stmt, 0);
-        const char *room_name = (const char *)sqlite3_column_text(stmt, 1);
+            cJSON *payload = cJSON_CreateObject();
 
-        cJSON *payload = cJSON_CreateObject();
+            cJSON_AddNumberToObject(payload, "room_id", room_id);
+            cJSON_AddStringToObject(payload, "room_name", room_name);
+            send_json(client_fd, "rooms", payload);
+            cJSON_Delete(payload);
 
-        cJSON_AddNumberToObject(payload, "room_id", room_id);
-        cJSON_AddStringToObject(payload, "room_name", room_name);
-        send_json(client_fd, "rooms", payload);
-        cJSON_Delete(payload);
-
-        rc = sqlite3_step(stmt);
+            rc = sqlite3_step(stmt);
+        }
     }
 
-    if (rc != SQLITE_DONE) {
+    else {
         fprintf(stderr, "sqlite error: %s\n", sqlite3_errmsg(db));
+        send_json(client_fd, "info", cJSON_CreateString("U don't have rooms\n"));
     }
 
     sqlite3_finalize(stmt);
@@ -274,37 +274,42 @@ int enter_into_room(int client_fd, sqlite3 *db, int room_id) {
 
 }
 
-int add_user_into_room(int client_fd,sqlite3 *db, const char *nickname, int room_id, const char *room_name) {
+int add_user_into_room(int client_fd,sqlite3 *db, const char *nickname, int room_id, char *room_name) {
     (void)client_fd;
     //int idn = user_table.users[find_user_by_socket(client_fd)].id;
     int idf = user_table.users[find_user_by_nick(nickname)].id;
-    create_table_room_user(db); 
 
     sqlite3_stmt *stmt;
+
+    printf("room_name in add_user: %s\n", room_name);
     
     char *sql = "INSERT INTO room_user (room_id, room_name, user_id) VALUES (?, ?, ?);";
 
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
-        fprintf(stderr, "sqlite error: %s\n", sqlite3_errmsg(db));
+        fprintf(stderr, "1 sqlite error: %s\n", sqlite3_errmsg(db));
         return 1;
     }
 
     sqlite3_bind_int(stmt, 1, room_id);
     sqlite3_bind_text(stmt, 2, room_name, -1, SQLITE_STATIC);
     sqlite3_bind_int(stmt, 3, idf);
-
+    
+    //free(room_name);
+    
     int rc = sqlite3_step(stmt);
 
     if (rc != SQLITE_DONE) {
-        fprintf(stderr, "sqlite error: %s\n", sqlite3_errmsg(db));
+        fprintf(stderr, "2 sqlite error: %s\n", sqlite3_errmsg(db));
         return 1;
     }
     sqlite3_finalize(stmt);
+    free(room_name);
     return 0;
 }
 
-const char *find_room_name_by_id(sqlite3 *db, int id) {
-    const char *sql = "SELECT room_name FROM room WHERE room_id = ?;";
+char *find_room_name_by_id(sqlite3 *db, int id) {
+    const char *sql = "SELECT room_name FROM room WHERE room_id = ? LIMIT 1;";
+    char *room_name_dup;
     sqlite3_stmt *stmt;
 
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
@@ -316,14 +321,21 @@ const char *find_room_name_by_id(sqlite3 *db, int id) {
     int rc = sqlite3_step(stmt);
 
     if (rc == SQLITE_ROW) {
-        const char *room_name = sqlite3_column_text(stmt, 0);
-        sqlite3_finalize(stmt);
-        return room_name;
+        const char *room_name = (const char *)sqlite3_column_text(stmt, 0);
+        if (room_name) {
+            room_name_dup = strdup(room_name);
+                printf("Memory allocated failed\n");
+        }
     }
+    
     
     else {
         fprintf(stderr, "sqlite error: %s\n", sqlite3_errmsg(db));
         sqlite3_finalize(stmt);
         return NULL;
     }
+
+    sqlite3_finalize(stmt);
+
+    return room_name_dup;
 }
