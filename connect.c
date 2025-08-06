@@ -208,7 +208,7 @@ int handle_client_json(int client_fd, const char *buf, sqlite3 *db) {
 
         else if (strcmp(sender, "Unknown") != 0) {
             create_message_table(db);
-            message_to_room(client_fd, db, buf);
+            message_to_room(client_fd, db, text);
         }
 
         int idx = find_user_by_socket(client_fd);

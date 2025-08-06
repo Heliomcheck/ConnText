@@ -191,6 +191,8 @@ void show_history(int client_fd, sqlite3 *db) {
         cJSON_AddStringToObject(payload, "text", text);
         send_json(client_fd, "chat", payload);
         cJSON_Delete(payload);
+
+        rc = sqlite3_step(stmt);
     }
 
     if (rc != SQLITE_DONE) {

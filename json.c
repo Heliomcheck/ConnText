@@ -25,7 +25,7 @@ void send_json(int sockfd, const char *type, cJSON *payload)
 
     send(sockfd, json_with_newline, json_len + 1, 0);
     
-    printf("json text %s\n", out);
+    //printf("json text %s\n", out);
 
     free(out);
     free(json_with_newline);
@@ -120,6 +120,7 @@ void print_menu() {
     printf("/add <user_name> - add user into room\n");
     printf("/logout - exit from chat\n");
     printf("/exit - close application and logout\n");
+    printf("/history - show all messages printed in chat\n");
     printf("/status <nick> - print status of user,\n"
             "if you does't print nick, this command\n"
             "print YOUR status\n");
@@ -253,6 +254,12 @@ void parse_user_input(const char *input, int sockfd) {
     else if (strcmp(command, "/exit") == 0) {
         cJSON_AddStringToObject(payload, "exit", "1");
         send_json(sockfd, "exit", payload);
+        return;
+    }
+
+    else if (strcmp(command, "/history") == 0) {
+        cJSON_AddStringToObject(payload, "history", "1");
+        send_json(sockfd, "history", payload);
         return;
     }
 
